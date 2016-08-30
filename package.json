@@ -1,0 +1,19 @@
+{
+  "name": "snake",
+  "version": "1.0.0",
+  "description": "snake project Technical Challenge solarcity",
+  "main": "main.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omarqx/snake.git"
+  },
+  "author": "omar qaddoumi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/omarqx/snake/issues"
+  },
+  "homepage": "https://github.com/omarqx/snake#readme"
+}

@@ -1,4 +1,4 @@
-class CanvasPosition {
+export default class CanvasPosition {
     constructor(public x: number = 0, public y: number = 0) {
 
     }
@@ -23,17 +23,20 @@ class CanvasPosition {
         return this;
     }
 }
+
 interface IComponent {
     position: CanvasPosition;
     render();
     dispose();
 }
+
 interface GameConfig {
     width?: number;
     height?: number;
     blockSize?: number;
     buildWalls?: boolean;
 }
+
 const enum Directions {
     Up = 38,
     Down = 40,
@@ -155,6 +158,7 @@ class GameCanvas {
     obstructions: IComponent[] = [];
     food: foodZone = null;
     snake: snake;
+    _arrowHandler;
     constructor(public config?: GameConfig) {
         this.canvas = document.createElement("canvas");
         if (config !== undefined) {
@@ -169,19 +173,10 @@ class GameCanvas {
         }
     }
 
-    start() {
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
+    setupHandlers() {
+        this._arrowHandler = null;
 
-        if (this.buildWalls === true) {
-            this.obstructions.push(new wall(new CanvasPosition(), this.width / this.blockSize, Directions.Right, this));
-            this.obstructions.push(new wall(new CanvasPosition(0, this.height - this.blockSize), this.width / this.blockSize, Directions.Right, this));
-            this.obstructions.push(new wall(new CanvasPosition(this.width - this.blockSize, 0), this.height / this.blockSize, Directions.Down, this));
-            this.obstructions.push(new wall(new CanvasPosition(), this.height / this.blockSize, Directions.Down, this));
-        }
-
-        this.context = this.canvas.getContext("2d");
-        document.addEventListener('keydown', (event: KeyboardEvent) => {
+        this._arrowHandler = (event: KeyboardEvent) => {
             switch (event.keyCode) {
                 case Directions.Down: this.motion = new CanvasPosition(0, this.blockSize);
                     break;
@@ -194,12 +189,36 @@ class GameCanvas {
                 default:
                     break;
             }
-        });
+            event.stopPropagation();
+        };
+
+        document.addEventListener('keydown', this._arrowHandler, true);
+    }
+
+    _teardownHandlers() {
+        document.removeEventListener('keydown', this._arrowHandler, true);
+        this._arrowHandler = null;
+    }
+
+
+    start() {
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+
+        if (this.buildWalls === true) {
+            this.obstructions.push(new wall(new CanvasPosition(), this.width / this.blockSize, Directions.Right, this));
+            this.obstructions.push(new wall(new CanvasPosition(0, this.height - this.blockSize), this.width / this.blockSize, Directions.Right, this));
+            this.obstructions.push(new wall(new CanvasPosition(this.width - this.blockSize, 0), this.height / this.blockSize, Directions.Down, this));
+            this.obstructions.push(new wall(new CanvasPosition(), this.height / this.blockSize, Directions.Down, this));
+        }
+
+        this.context = this.canvas.getContext("2d");
+        this.setupHandlers();
         document.body.appendChild(this.canvas);
         this.snake = new snake(new CanvasPosition(this.blockSize, this.blockSize), this);
         this.food = this.newFood();
 
-        this.animation = requestAnimationFrame(()=>this.draw.apply(this));
+        this.animation = requestAnimationFrame(() => this.draw.apply(this));
         this.interval = setInterval(() => this.gameLoop.apply(this), (1000 / 60) * 5);
     }
 
@@ -212,7 +231,7 @@ class GameCanvas {
         this.obstructions.forEach((fe) => fe.render());
         this.snake.render();
         this.food.render();
-        this.animation =requestAnimationFrame(()=>this.draw.apply(this));
+        this.animation = requestAnimationFrame(() => this.draw.apply(this));
     }
 
     newFood() {
@@ -238,6 +257,7 @@ class GameCanvas {
     endGame() {
         clearInterval(this.interval);
         cancelAnimationFrame(this.animation);
+        this._teardownHandlers();
         this.context.font = "50px 'Lucida Sans Unicode'";
         this.context.fillStyle = "red";
         this.context.textAlign = "center";

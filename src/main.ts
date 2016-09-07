@@ -1,10 +1,3 @@
-interface GameConfig {
-    width?: number;
-    height?: number;
-    blockSize?: number;
-    buildWalls?: boolean;
-}
-
 class CanvasPosition {
     constructor(public x: number = 0, public y: number = 0) {
 
@@ -30,18 +23,22 @@ class CanvasPosition {
         return this;
     }
 }
-
 interface IComponent {
     position: CanvasPosition;
     render();
     dispose();
+}
+interface GameConfig {
+    width?: number;
+    height?: number;
+    blockSize?: number;
+    buildWalls?: boolean;
 }
 const enum Directions {
     Up = 38,
     Down = 40,
     Left = 37,
     Right = 39
-
 }
 abstract class Composition implements IComponent {
     components: IComponent[];
@@ -116,7 +113,6 @@ class snakeBody implements IComponent {
 
     }
 }
-
 class snake extends Composition {
     size: number = 1;
     queue: CanvasPosition[] = [];
@@ -150,10 +146,11 @@ class GameCanvas {
     canvas: HTMLCanvasElement;
     context: CanvasRenderingContext2D;
     interval: number;
-    blockSize: number = 5;
+    animation: number;
+    blockSize: number = 10;
     buildWalls: boolean = true;
-    width: number = 480;
-    height: number = 270;
+    width: number = 500;
+    height: number = 500;
     motion: CanvasPosition = new CanvasPosition();
     obstructions: IComponent[] = [];
     food: foodZone = null;
@@ -201,28 +198,33 @@ class GameCanvas {
         document.body.appendChild(this.canvas);
         this.snake = new snake(new CanvasPosition(this.blockSize, this.blockSize), this);
         this.food = this.newFood();
-        this.interval = setInterval(() => this.updateGameArea.apply(this), 50);
+
+        this.animation = requestAnimationFrame(()=>this.draw.apply(this));
+        this.interval = setInterval(() => this.gameLoop.apply(this), (1000 / 60) * 5);
     }
 
     clear() {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
+    draw() {
+        this.clear();
+        this.obstructions.forEach((fe) => fe.render());
+        this.snake.render();
+        this.food.render();
+        this.animation =requestAnimationFrame(()=>this.draw.apply(this));
+    }
+
     newFood() {
         return new foodZone(new CanvasPosition(this.getRandomArbitrary(this.blockSize, this.width - this.blockSize), this.getRandomArbitrary(this.blockSize, this.height - this.blockSize)), this);
     }
-    updateGameArea() {
-        this.clear();
+    gameLoop() {
         if (this.food.position.equal(this.snake.position)) {
             this.food = this.newFood();
             this.snake.grow();
         }
         if (this.snake)
             this.snake.move(this.motion);
-        this.obstructions.forEach((fe) => fe.render());
-        this.snake.render();
-        this.food.render();
-
 
         this.obstructions.forEach((obs) => {
             if (obs instanceof Composition && obs.intersect(this.snake.position))
@@ -235,10 +237,11 @@ class GameCanvas {
     }
     endGame() {
         clearInterval(this.interval);
+        cancelAnimationFrame(this.animation);
         this.context.font = "50px 'Lucida Sans Unicode'";
         this.context.fillStyle = "red";
-        this.context.textAlign="center"; 
-        this.context.fillText("GAME OVER!",(this.width/2), (this.height/2));
+        this.context.textAlign = "center";
+        this.context.fillText("GAME OVER!", (this.width / 2), (this.height / 2));
     }
 
     getRandomArbitrary(min, max) {

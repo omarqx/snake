@@ -15,5 +15,11 @@
   "bugs": {
     "url": "https://github.com/omarqx/snake/issues"
   },
-  "homepage": "https://github.com/omarqx/snake#readme"
+  "homepage": "https://github.com/omarqx/snake#readme",
+  "devDependencies": {
+    "ts-loader": "^0.8.2",
+    "typescript": "^1.8.10",
+    "webpack": "^1.13.2",
+    "webpack-dev-server": "^1.15.1"
+  }
 }

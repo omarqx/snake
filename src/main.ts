@@ -20,6 +20,10 @@ class CanvasPosition {
         return new CanvasPosition(this.x, this.y);
     }
 
+    equal(point: CanvasPosition): boolean {
+        return point.x === this.x && point.y === this.y;
+    }
+
     subtract(point: CanvasPosition): CanvasPosition {
         this.x -= point.x;
         this.y -= point.y;
@@ -28,6 +32,7 @@ class CanvasPosition {
 }
 
 interface IComponent {
+    position: CanvasPosition;
     render();
     dispose();
 }
@@ -43,7 +48,7 @@ abstract class Composition implements IComponent {
     /**
      *
      */
-    constructor() {
+    constructor(public position?: CanvasPosition) {
         this.components = [];
     }
 
@@ -58,6 +63,11 @@ abstract class Composition implements IComponent {
     render() {
         this.components.forEach((fe) => fe.render());
     }
+
+    intersect(point: CanvasPosition): boolean {
+        return !this.components.every((e) => !e.position.equal(point));
+    }
+
     dispose() {
         this.components.forEach((fe) => fe.dispose());
     }
@@ -77,16 +87,24 @@ class deadZone implements IComponent {
 
     }
 }
-class snake implements IComponent {
+class foodZone implements IComponent {
     /**
      *
      */
     constructor(public position: CanvasPosition, public canvas: GameCanvas) {
 
     }
+    render() {
+        this.canvas.context.fillStyle = "green";
+        this.canvas.context.fillRect(this.position.x, this.position.y, this.canvas.blockSize, this.canvas.blockSize);
+    }
+    dispose() {
 
-    move(diff: CanvasPosition) {
-        this.position.add(diff);
+    }
+}
+class snakeBody implements IComponent {
+    constructor(public position: CanvasPosition, public canvas: GameCanvas) {
+
     }
 
     render() {
@@ -96,6 +114,29 @@ class snake implements IComponent {
 
     dispose() {
 
+    }
+}
+
+class snake extends Composition {
+
+    size: number = 1;
+    queue: CanvasPosition[] = [];
+    /**
+     *
+     */
+    constructor(public position: CanvasPosition, public canvas: GameCanvas) {
+        super();
+    }
+
+    grow() {
+        this.size++;
+    }
+
+    move(diff: CanvasPosition) {
+        this.position.add(diff);
+        this.addComponent(new snakeBody(this.position.clone(),this.canvas));
+        if(this.components.length > this.size)
+            this.components.shift();
     }
 }
 class GameCanvas {
@@ -108,7 +149,7 @@ class GameCanvas {
     height: number = 270;
     motion: CanvasPosition = new CanvasPosition();
     obstructions: IComponent[] = [];
-    edibles: IComponent[] = [];
+    food: foodZone = null;
     snake: snake;
     constructor(public config?: GameConfig) {
         this.canvas = document.createElement("canvas");
@@ -151,7 +192,8 @@ class GameCanvas {
             }
         });
         document.body.appendChild(this.canvas);
-        this.snake = new snake(new CanvasPosition(this.width / 10, this.height / 10), this);
+        this.snake = new snake(new CanvasPosition(this.blockSize, this.blockSize), this);
+        this.food = this.newFood();
         this.interval = setInterval(() => this.updateGameArea.apply(this), 50);
     }
 
@@ -159,12 +201,35 @@ class GameCanvas {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
+    newFood() {
+        return new foodZone(new CanvasPosition(this.getRandomArbitrary(this.blockSize, this.width - this.blockSize), this.getRandomArbitrary(this.blockSize, this.height - this.blockSize)), this);
+    }
     updateGameArea() {
         this.clear();
+        if (this.food.position.equal(this.snake.position)) {
+            this.food = this.newFood();
+            this.snake.grow();
+        }
         if (this.snake)
-            this.snake.position.add(this.motion);
+            this.snake.move(this.motion);
         this.obstructions.forEach((fe) => fe.render());
         this.snake.render();
+        this.food.render();
+
+
+        this.obstructions.forEach((obs) => {
+            if (obs instanceof Composition && obs.intersect(this.snake.position))
+                this.endGame();
+        });
+
+    }
+    endGame() {
+        clearInterval(this.interval);
+    }
+
+    getRandomArbitrary(min, max) {
+        let original = ~~(Math.random() * (max - min) + min);
+        return original - original % this.blockSize;
     }
 }
 class wall extends Composition {

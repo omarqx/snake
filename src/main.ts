@@ -4,10 +4,29 @@ interface GameConfig {
     blockSize?: number;
     buildWalls?: boolean;
 }
-interface CanvasPosition {
-    x: number;
-    y: number;
+
+class CanvasPosition {
+    constructor(public x: number = 0, public y: number = 0) {
+
+    }
+
+    add(point: CanvasPosition): CanvasPosition {
+        this.x += point.x;
+        this.y += point.y;
+        return this;
+    }
+
+    clone(): CanvasPosition {
+        return new CanvasPosition(this.x, this.y);
+    }
+
+    subtract(point: CanvasPosition): CanvasPosition {
+        this.x -= point.x;
+        this.y -= point.y;
+        return this;
+    }
 }
+
 interface IComponent {
     render();
     dispose();
@@ -67,8 +86,7 @@ class snake implements IComponent {
     }
 
     move(diff: CanvasPosition) {
-        this.position.x += diff.x;
-        this.position.y += diff.y;
+        this.position.add(diff);
     }
 
     render() {
@@ -88,10 +106,7 @@ class GameCanvas {
     buildWalls: boolean = true;
     width: number = 480;
     height: number = 270;
-    motion: { x: number, y: number } = {
-        x: 0,
-        y: 0
-    };
+    motion: CanvasPosition = new CanvasPosition();
     obstructions: IComponent[] = [];
     edibles: IComponent[] = [];
     snake: snake;
@@ -114,29 +129,29 @@ class GameCanvas {
         this.canvas.height = this.height;
 
         if (this.buildWalls === true) {
-            this.obstructions.push(new wall({ x: 0, y: 0 },this.width/this.blockSize,Directions.Right,this));
-            this.obstructions.push(new wall({ x: 0, y: this.height-this.blockSize },this.width/this.blockSize,Directions.Right,this));
-            this.obstructions.push(new wall({ x: this.width-this.blockSize, y: 0 },this.height/this.blockSize,Directions.Down,this));
-            this.obstructions.push(new wall({ x: 0, y: 0},this.height/this.blockSize,Directions.Down,this));
+            this.obstructions.push(new wall(new CanvasPosition(), this.width / this.blockSize, Directions.Right, this));
+            this.obstructions.push(new wall(new CanvasPosition(0, this.height - this.blockSize), this.width / this.blockSize, Directions.Right, this));
+            this.obstructions.push(new wall(new CanvasPosition(this.width - this.blockSize, 0), this.height / this.blockSize, Directions.Down, this));
+            this.obstructions.push(new wall(new CanvasPosition(), this.height / this.blockSize, Directions.Down, this));
         }
 
         this.context = this.canvas.getContext("2d");
         document.addEventListener('keydown', (event: KeyboardEvent) => {
             switch (event.keyCode) {
-                case Directions.Down: this.motion = { x: 0, y: this.blockSize };
+                case Directions.Down: this.motion = new CanvasPosition(0, this.blockSize);
                     break;
-                case Directions.Left: this.motion = { x: -this.blockSize, y: 0 };
+                case Directions.Left: this.motion = new CanvasPosition(-this.blockSize, 0);
                     break;
-                case Directions.Right: this.motion = { x: this.blockSize, y: 0 };
+                case Directions.Right: this.motion = new CanvasPosition(this.blockSize, 0);
                     break;
-                case Directions.Up: this.motion = { x: 0, y: -this.blockSize };
+                case Directions.Up: this.motion = new CanvasPosition(0, -this.blockSize);
                     break;
                 default:
                     break;
             }
         });
         document.body.appendChild(this.canvas);
-        this.snake = new snake({ x: this.width / 10, y: this.height / 10 }, this);
+        this.snake = new snake(new CanvasPosition(this.width / 10, this.height / 10), this);
         this.interval = setInterval(() => this.updateGameArea.apply(this), 50);
     }
 
@@ -147,7 +162,7 @@ class GameCanvas {
     updateGameArea() {
         this.clear();
         if (this.snake)
-            this.snake.move(this.motion);
+            this.snake.position.add(this.motion);
         this.obstructions.forEach((fe) => fe.render());
         this.snake.render();
     }
@@ -157,16 +172,16 @@ class wall extends Composition {
         super();
         switch (direction) {
             case Directions.Down: for (var index = 0; index < length; index++)
-                this.addComponent(new deadZone({ x: postion.x, y: postion.y + (index * this.canvas.blockSize) }, canvas));
+                this.addComponent(new deadZone(new CanvasPosition(postion.x, postion.y + (index * this.canvas.blockSize)), canvas));
                 break;
-                case Directions.Left: for (var index = 0; index < length; index++)
-                this.addComponent(new deadZone({ x: postion.x+(index*-this.canvas.blockSize), y: postion.y }, canvas));
+            case Directions.Left: for (var index = 0; index < length; index++)
+                this.addComponent(new deadZone(new CanvasPosition(postion.x + (index * -this.canvas.blockSize), postion.y), canvas));
                 break;
-                case Directions.Right: for (var index = 0; index < length; index++)
-                this.addComponent(new deadZone({ x: postion.x+(index*this.canvas.blockSize), y: postion.y }, canvas));
+            case Directions.Right: for (var index = 0; index < length; index++)
+                this.addComponent(new deadZone(new CanvasPosition(postion.x + (index * this.canvas.blockSize), postion.y), canvas));
                 break;
-                case Directions.Up: for (var index = 0; index < length; index++)
-                this.addComponent(new deadZone({ x: postion.x, y: postion.y + (index *-this.canvas.blockSize) }, canvas));
+            case Directions.Up: for (var index = 0; index < length; index++)
+                this.addComponent(new deadZone(new CanvasPosition(postion.x, postion.y + (index * -this.canvas.blockSize)), canvas));
                 break;
             default:
                 break;

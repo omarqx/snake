@@ -80,7 +80,7 @@ class deadZone implements IComponent {
 
     }
     render() {
-        this.canvas.context.fillStyle = "red";
+        this.canvas.context.fillStyle = "black";
         this.canvas.context.fillRect(this.position.x, this.position.y, this.canvas.blockSize, this.canvas.blockSize);
     }
     dispose() {
@@ -118,24 +118,31 @@ class snakeBody implements IComponent {
 }
 
 class snake extends Composition {
-
     size: number = 1;
     queue: CanvasPosition[] = [];
+    head: snakeBody;
     /**
      *
      */
     constructor(public position: CanvasPosition, public canvas: GameCanvas) {
         super();
+        this.head = new snakeBody(position.clone(), this.canvas);
     }
 
     grow() {
         this.size++;
     }
 
+    render() {
+        super.render();
+        this.head.render();
+    }
+
     move(diff: CanvasPosition) {
+        this.addComponent(new snakeBody(this.position.clone(), this.canvas));
         this.position.add(diff);
-        this.addComponent(new snakeBody(this.position.clone(),this.canvas));
-        if(this.components.length > this.size)
+        this.head = new snakeBody(this.position.clone(), this.canvas);
+        if (this.components.length + 1 > this.size)
             this.components.shift();
     }
 }
@@ -222,9 +229,16 @@ class GameCanvas {
                 this.endGame();
         });
 
+        if (this.snake.intersect(this.snake.position))
+            this.endGame();
+
     }
     endGame() {
         clearInterval(this.interval);
+        this.context.font = "50px 'Lucida Sans Unicode'";
+        this.context.fillStyle = "red";
+        this.context.textAlign="center"; 
+        this.context.fillText("GAME OVER!",(this.width/2), (this.height/2));
     }
 
     getRandomArbitrary(min, max) {
